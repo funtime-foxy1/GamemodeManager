@@ -9,7 +9,8 @@ namespace GamemodeManager.Mods
 {
     public abstract class GamemodeMod : BaseUnityPlugin
     {
-        protected bool ModActive { get; set; }
+        public bool ModActive { get; set; }
+        public Dictionary<string, object> settings = new Dictionary<string, object>();
         protected bool RegisterMod()
         {
             if (ModManager.mods.Contains(this))
@@ -19,6 +20,14 @@ namespace GamemodeManager.Mods
             bool res = ModManager.AddMod(this);
             Plugin.Log.LogWarning("Mod: " + this.Info.Metadata.GUID + " has been loaded: " + res);
             return res;
+        }
+        public object GetSetting(string key)
+        {
+            return settings[key];
+        }
+        protected void SetSetting(string key, string value)
+        {
+            settings[key] = value;
         }
 
         //constructor

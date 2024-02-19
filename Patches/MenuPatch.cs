@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 using GamemodeManager.Mods;
 using GamemodeManager.UI;
 using Steamworks;
+using GUI = GamemodeManager.UI.GUI;
 
 namespace GamemodeManager.Patches
 {
@@ -24,6 +25,7 @@ namespace GamemodeManager.Patches
     internal class MenuPatch
     {
         static Object panel__gamemodes;
+        static Object panel__host;
         static Object panel__gamemodecreate;
         static Object panel__edit;
 
@@ -32,9 +34,11 @@ namespace GamemodeManager.Patches
         static MenuManager instance_;
         static Object lastGamemodeObj;
 
-        static List<BepInEx.PluginInfo> allInstalledMods = new List<BepInEx.PluginInfo>();
+        public static List<BepInEx.PluginInfo> allInstalledMods = new List<BepInEx.PluginInfo>();
 
         static List<string> allowedMods = new List<string>();
+
+        public static string selectedGamemode = "";
 
         [HarmonyPostfix]
         [HarmonyPatch("Start")]
@@ -103,6 +107,81 @@ namespace GamemodeManager.Patches
             CreateUIFunctionality();
             panel__gamemodes.SetActive(false);
 
+            var sidePanel_host = Plugin.assets.LoadAsset<Object>("GamemodeHostPanel");
+            panel__host = Object.Instantiate(sidePanel_host, menuContainer.transform.Find("LobbyHostSettings"));
+            panel__host.GetComponent<RectTransform>().localPosition = new Vector3(-250.8683f, -7.29f, 2.9804f);
+            panel__host.transform.Find("AllGamemodes").Find("Viewport").Find("Content").Find("GamemodeEX").gameObject.SetActive(false);
+            panel__host.SetActive(true);
+
+            
+
+            if (menuContainer.transform.Find("MainButtons") != null)
+            {
+                menuContainer.transform.Find("MainButtons").Find("HostButton").GetComponent<Button>().onClick.AddListener(() =>
+                {
+                    var saves = menuContainer.transform.Find("LobbyHostSettings").Find("FilesPanel");
+
+                    saves.gameObject.SetActive(true);
+                    selectedGamemode = "";
+                    panel__host.SetActive(GameModeFile.InstalledGamemodeLength() != 0);
+                    if (panel__host.activeSelf)
+                    {
+                        var content = panel__host.transform.Find("AllGamemodes").Find("Viewport").Find("Content");
+                        // TODO: LOAD GAMEMODES!
+
+                        for (int i = 0; i < content.childCount; i++)
+                        {
+                            var child = content.GetChild(i);
+                            if (child.name == "GamemodeEX")
+                            {
+                                continue;
+                            }
+                            Object.Destroy(child.gameObject);
+                        }
+                        for (int i = 0; i < GameModeFile.GetAllGamemodes().Count; i++)
+                        {
+                            string _gamemode = GameModeFile.GetAllGamemodes()[i];
+                            var gamemode = Object.Instantiate(content.Find("GamemodeEX"), content);
+                            gamemode.name = _gamemode;
+                            gamemode.Find("name").GetComponent<TextMeshProUGUI>().text = _gamemode;
+                            gamemode.gameObject.SetActive(true);
+
+                            //TODO: Use gamemode
+                            gamemode.Find("use").GetComponent<Button>().onClick.AddListener(() =>
+                            {
+
+                                if (selectedGamemode == _gamemode)
+                                {
+                                    //Selected
+                                    gamemode.GetComponent<Image>().color = new Color(0.5283019f, 0, 0, 1);
+                                    content.Find(selectedGamemode).Find("use").GetComponentInChildren<TextMeshProUGUI>().text = "Use";
+                                    saves.gameObject.SetActive(true);
+                                    selectedGamemode = "";
+                                }
+                                else
+                                {
+                                    // Not selected yet
+                                    var clr = new Color(1, 0.0519f, 0, 0.0353f);
+                                    saves.gameObject.SetActive(false);
+
+                                    if (selectedGamemode != "")
+                                    {
+                                        content.Find(selectedGamemode).GetComponent<Image>().color = new Color(0.5283019f, 0, 0, 1);
+                                        content.Find(selectedGamemode).Find("use").GetComponentInChildren<TextMeshProUGUI>().text = "Use";
+                                    }
+
+                                    gamemode.GetComponent<Image>().color = new Color(0.2329722f, 0.3962264f, 0, 1);
+                                    gamemode.Find("use").GetComponentInChildren<TextMeshProUGUI>().text = "Unuse";
+                                    selectedGamemode = _gamemode;
+                                }
+
+                            });
+                        }
+                    }
+                });
+            }
+
+
             var allAddedMods = new List<string>();
             var panel__ = panel__gamemodecreate.transform.Find("Panel").Find("SidePanel").Find("allMods").Find("Viewport").Find("Content");
             for (int i = 0; i < allInstalledMods.Count; i++)
@@ -160,6 +239,13 @@ namespace GamemodeManager.Patches
                 {
                     //Plugin.Log.LogInfo("edit gamemode: " + _gamemode);
                     panel__edit.transform.Find("Panel").Find("TitleText").GetComponentInChildren<TextMeshProUGUI>().text = _gamemode;
+
+                    Dictionary<string, string> datatata = GameModeFile.GetGamemode(_gamemode);
+                    datatata.Add("GUID", _gamemode);
+
+                    GUI.AddGUIInteractivity_GamemodeEdit(panel__edit.transform, datatata);
+
+
                     panel__gamemodes.SetActive(false);
                     panel__edit.SetActive(true);
                 });
@@ -205,8 +291,12 @@ namespace GamemodeManager.Patches
             var panel = panel__edit.transform.Find("Panel");
             panel.Find("Close").GetComponent<Button>().onClick.AddListener(() =>
             {
-                panel__edit.SetActive(false);
-                panel__gamemodes.SetActive(true);
+                GUI.OpenConfirmation("Discard", "Remove ALL unsaved changes?", "Yes", "Keep editing", (obj) =>
+                {
+                    panel__edit.SetActive(false);
+                    panel__gamemodes.SetActive(true);
+                });
+                
             });
         }
 

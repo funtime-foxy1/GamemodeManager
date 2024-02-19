@@ -72,6 +72,13 @@ namespace GamemodeManager.GameFile
             write.Close();
             return true;
         }
+        public static bool CreateGamemodeRaw(string GUID, Dictionary<string, string> data)
+        {
+            StreamWriter write = File.AppendText(Path.Combine(assemblyLocation, "gamemodes"));
+            write.WriteLine($"{GUID} " + JsonConvert.SerializeObject(data));
+            write.Close();
+            return true;
+        }
 
         public static int InstalledGamemodeLength()
         {
