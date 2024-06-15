@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using GamemodeManagerAPI.Mods;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -43,9 +44,10 @@ namespace GamemodeManager.GameFile
             File.WriteAllLines(Path.Combine(assemblyLocation, "gamemodes"), newLines);
         }
 
-        public static Dictionary<string, string> GetGamemode(string GUID)
+        public static GamemodeResult GetGamemode(string GUID)
         {
             StreamReader reader = File.OpenText(Path.Combine(assemblyLocation, "gamemodes"));
+            var gamemode_ = new GamemodeResult(GUID);
             var currentLine = "";
             while (!currentLine.Contains("*start"))
             {
@@ -57,22 +59,24 @@ namespace GamemodeManager.GameFile
                 string[] tokens = currentLine.Split(' ');
                 if (tokens[0] == GUID)
                 {
-                    reader.Close();
-                    return JsonConvert.DeserializeObject<Dictionary<string, string>>(tokens[1]);
+                    gamemode_.success = true;
+                    gamemode_.results = JsonConvert.DeserializeObject<Dictionary<string, object>>(tokens[1]);
+                    gamemode_.gamemode.data = gamemode_.results;
+                    break;
                 }
             }
             reader.Close();
-            Plugin.Log.LogWarning("Couldn't find gamemode: " + GUID);
-            return new Dictionary<string, string>();
+            if (!gamemode_.success) Plugin.Log.LogWarning("Couldn't find gamemode: " + GUID);
+            return gamemode_;
         }
-        public static bool CreateGamemode(string author, string name, Dictionary<string, string> data)
+        public static bool CreateGamemode(string author, string name, Dictionary<string, object> data)
         {
             StreamWriter write = File.AppendText(Path.Combine(assemblyLocation, "gamemodes"));
             write.WriteLine($"{author}.{name} " + JsonConvert.SerializeObject(data));
             write.Close();
             return true;
         }
-        public static bool CreateGamemodeRaw(string GUID, Dictionary<string, string> data)
+        public static bool CreateGamemodeRaw(string GUID, Dictionary<string, object> data)
         {
             StreamWriter write = File.AppendText(Path.Combine(assemblyLocation, "gamemodes"));
             write.WriteLine($"{GUID} " + JsonConvert.SerializeObject(data));

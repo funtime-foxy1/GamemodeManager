@@ -1,0 +1,11 @@
+COMMAND IDEAS:
+/give - Give items
+
+what to add:
+- Use commands while dead
+- Kill spawned enemies
+- Ability to customize who can use commands
+- finish spawn location options
+
+WHAT TO FIX:
+- idk
